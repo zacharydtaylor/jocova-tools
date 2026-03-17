@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEPQ Voice Simulator — Jocova Financial</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#e8e4dc;min-height:100vh;}
+#app{max-width:680px;margin:0 auto;padding:1rem 1.25rem 4rem;}
+h1{font-size:22px;font-weight:600;color:#e8b84b;margin:1.5rem 0 0.25rem;}
+.sub{font-size:14px;color:#666;margin:0.5rem 0 1rem;line-height:1.6;}
+.warn{background:#1a1500;border:1px solid #c9952a55;border-radius:8px;padding:10px 14px;font-size:12px;color:#c9952a;margin-bottom:1.5rem;line-height:1.8;}
+.group-label{font-size:10px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px;display:block;}
+.scenarios{display:flex;flex-direction:column;gap:6px;margin-bottom:1.5rem;}
+.scen-btn{background:#141414;border:1px solid #2a2a2a;border-radius:9px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;color:#e8e4dc;text-align:left;width:100%;}
+.scen-btn:hover{border-color:#555;background:#1a1a1a;}
+.scen-title{font-size:14px;font-weight:600;color:#e8e4dc;display:block;}
+.scen-tag{font-size:12px;color:#666;font-style:italic;margin-top:2px;display:block;}
+.scen-role{font-size:11px;color:#444;margin-top:2px;display:block;}
+.call-header{position:sticky;top:0;background:#0f0f0f;padding:0.75rem 0 0.5rem;border-bottom:1px solid #1a1a1a;margin-bottom:1rem;z-index:10;}
+.health-track{flex:1;height:4px;background:#1e1e1e;border-radius:2px;overflow:hidden;}
+.health-fill{height:100%;width:55%;border-radius:2px;background:#e8a838;transition:width 0.5s,background 0.4s;}
+#msgs{display:flex;flex-direction:column;gap:10px;min-height:160px;margin-bottom:1rem;}
+.bub-p{background:#1a1a1a;border:1px solid #252525;border-radius:4px 12px 12px 12px;padding:10px 14px;font-size:14px;line-height:1.65;color:#ccc;max-width:82%;display:inline-block;}
+.bub-z{background:#1c1810;border:1px solid #c9952a33;border-radius:12px 4px 12px 12px;padding:10px 14px;font-size:14px;line-height:1.65;color:#e8d9b0;max-width:82%;display:inline-block;}
+.av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
+.coach-box{margin-left:36px;background:#0d1a12;border:1px solid #193322;border-radius:8px;padding:10px 13px;}
+.coach-tag{font-size:10px;font-weight:600;color:#7bc47f;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;}
+.coach-text{font-size:12px;color:#7a9e7d;line-height:1.6;}
+#micbtn{background:linear-gradient(135deg,#c9952a,#e8b84b);border:none;border-radius:10px;padding:16px 48px;font-size:16px;font-weight:700;color:#0f0f0f;cursor:pointer;}
+#micbtn:disabled{background:#1e1e1e;color:#444;cursor:not-allowed;}
+#micbtn.listening{background:#cc3333;color:#fff;}
+.btn-gold{background:linear-gradient(135deg,#c9952a,#e8b84b);border:none;border-radius:8px;padding:10px 22px;color:#0f0f0f;font-weight:700;font-size:13px;cursor:pointer;}
+.btn-ghost{background:transparent;border:1px solid #2a2a2a;border-radius:8px;padding:10px 18px;color:#666;font-size:13px;cursor:pointer;}
+.exchange-card{background:#141414;border:1px solid #1e1e1e;border-radius:10px;padding:1rem;margin-bottom:10px;}
+.transcript-box{background:#141414;border:1px solid #1e1e1e;border-radius:10px;padding:1rem;margin-bottom:1.5rem;font-size:13px;color:#888;line-height:1.9;white-space:pre-wrap;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- PICK -->
+<div id="s-pick">
+  <h1>⚡ NEPQ Voice Simulator</h1>
+  <p class="sub">The prospect speaks out loud. You speak back. Real call energy — no typing. Full debrief when it's over.</p>
+  <div class="warn">
+    <strong>Requirements:</strong> Chrome or Edge browser only. Click Allow when Chrome asks for microphone access. Turn your volume up — the prospect talks back.<br><br>
+    How it works: Click a scenario → prospect opens the call out loud → tap <strong>Tap to speak</strong> when it's your turn → tap again when done → prospect responds.
+  </div>
+  <div id="debug" style="background:#1a0000;border:1px solid #550000;border-radius:8px;padding:10px 14px;font-size:12px;color:#e87070;margin-bottom:1rem;display:none;"></div>
+
+  <span class="group-label">Vendor — new prospecting</span>
+  <div class="scenarios" id="g-p"></div>
+  <span class="group-label">Vendor — active objections</span>
+  <div class="scenarios" id="g-v"></div>
+  <span class="group-label">End user — the money call</span>
+  <div class="scenarios" id="g-e"></div>
+</div>
+
+<!-- CALL -->
+<div id="s-call" style="display:none;">
+  <div class="call-header">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <button onclick="endCall()" style="background:transparent;border:1px solid #2a2a2a;border-radius:6px;padding:5px 12px;color:#555;font-size:11px;cursor:pointer;">End call</button>
+      <span id="cn" style="font-size:14px;font-weight:600;color:#ddd;"></span>
+      <span id="cr" style="font-size:12px;color:#555;"></span>
+      <span id="ct" style="font-size:12px;color:#444;margin-left:auto;"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:11px;color:#444;">Call health</span>
+      <div class="health-track"><div class="health-fill" id="bar"></div></div>
+      <span id="barlabel" style="font-size:12px;font-weight:600;min-width:90px;text-align:right;color:#e8a838;">Neutral · 55</span>
+    </div>
+  </div>
+
+  <div id="msgs"></div>
+  <div id="typing" style="display:none;padding:10px 14px;background:#1a1a1a;border:1px solid #252525;border-radius:4px 12px 12px 12px;width:fit-content;margin-bottom:12px;font-size:13px;color:#666;">Speaking...</div>
+
+  <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:1.5rem 0;">
+    <div id="mstatus" style="font-size:13px;color:#666;min-height:18px;text-align:center;"></div>
+    <button id="micbtn" onclick="toggleMic()" disabled>Tap to speak</button>
+    <div id="interim" style="font-size:13px;color:#666;min-height:36px;text-align:center;max-width:480px;line-height:1.5;font-style:italic;"></div>
+  </div>
+</div>
+
+<!-- DEBRIEF -->
+<div id="s-debrief" style="display:none;">
+  <h1 style="margin-bottom:0.25rem;">Call debrief</h1>
+  <p id="dm" style="font-size:13px;color:#666;margin-bottom:1.5rem;"></p>
+  <div style="background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:20px;">
+    <div style="text-align:center;flex-shrink:0;">
+      <div id="grade" style="font-size:52px;font-weight:700;line-height:1;">-</div>
+      <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">Grade</div>
+    </div>
+    <div id="dsummary" style="font-size:13px;color:#bbb;line-height:1.7;flex:1;"></div>
+  </div>
+  <p style="font-size:14px;font-weight:600;color:#ddd;margin:0 0 10px;">Exchange by exchange</p>
+  <div id="exlist"></div>
+  <p style="font-size:14px;font-weight:600;color:#ddd;margin:1rem 0 10px;">Full transcript</p>
+  <div class="transcript-box" id="fulltx"></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button class="btn-gold" id="retrybtn">Try again</button>
+    <button class="btn-ghost" onclick="go('pick')">New scenario</button>
+    <button class="btn-ghost" onclick="copyReport()" id="copybtn">Copy report</button>
+  </div>
+</div>
+
+</div>
+<script>
+
+// ── SCENARIOS ──────────────────────────────────────────────────────────────
+var SC = {
+  p: [
+    {id:"cold",  label:"Cold open",            tag:'"20 seconds to earn the call."',   name:"Dave",   role:"Construction dealer, Hamilton ON",   g:"m", sys:"You are Dave, owner of a construction equipment dealership in Hamilton. You are busy on the lot. A broker named Zach just called you cold. You are about to brush him off unless he says something worth hearing in the first 20 seconds."},
+    {id:"happy", label:"Happy with what we have", tag:'"We\'re all set, thanks."',       name:"Karen",  role:"CNC dealer GM, Mississauga ON",       g:"f", sys:"You are Karen, GM of a CNC machinery dealership in Mississauga. Zach called you cold. You get calls like this every month. Your default is we are fine and do not need anything — he needs a real reason to keep you on the line."},
+    {id:"bad",   label:"Tried it before",       tag:'"Last program was a disaster."',   name:"Jim",    role:"Robotics dealer, Woodstock ON",        g:"m", sys:"You are Jim, owner of an industrial robotics dealership in Woodstock. You tried a finance company two years ago — approvals were slow and a deal fell apart right before funding. You are still bitter. Zach is pitching and you are going to tell him exactly what happened."}
+  ],
+  v: [
+    {id:"rate",  label:"Rate too high",         tag:'"Your rates are too high."',       name:"Gord",   role:"Landscaping dealer, Barrie ON",        g:"m", sys:"You are Gord, owner of a landscaping equipment dealership in Barrie with 18 years in business. Zach just pitched his vendor finance program. You believe your customers can get cheaper financing at the bank. Push back on rate."},
+    {id:"bank",  label:"Already has a lender",  tag:'"We already work with TD."',       name:"Sandra", role:"Industrial machinery GM, Cambridge ON", g:"f", sys:"You are Sandra, GM of an industrial machinery dealership in Cambridge. You have had a 12-year relationship with TD. Zach is pitching a vendor finance program. You are polite but firm — you do not need another lender and you are loyal to TD."},
+    {id:"nofi",  label:"Doesn't do financing",  tag:'"We don\'t offer financing."',     name:"Mike",   role:"Trailer dealer, Newmarket ON",         g:"m", sys:"You are Mike, owner of a trailer dealership near Newmarket. You have never offered financing to customers — they pay cash or arrange their own bank loan. You think financing programs are complicated and create liability. Zach is trying to change your mind."}
+  ],
+  e: [
+    {id:"eurate",   label:"What's the rate?",          tag:'"Just tell me the rate."',           name:"Tyler", role:"Excavation contractor, Orangeville ON", g:"m", sys:"You are Tyler, an excavation contractor in Orangeville looking to finance a 45 thousand dollar skid steer. Zach is the broker handling the deal. You want to know the rate right away. You have heard 8 to 10 percent and that sounds expensive. Push for a number and be skeptical if he dodges."},
+    {id:"eubank",   label:"My bank is cheaper",         tag:'"My bank can beat that."',           name:"Lisa",  role:"Landscaping company owner, Aurora ON",  g:"f", sys:"You are Lisa, owner of a landscaping company in Aurora. You are financing a 35 thousand dollar trailer. Zach quoted you a monthly payment. You looked up your bank loan rate online and it seems cheaper. Tell him your bank can do it for less."},
+    {id:"eucash",   label:"I'll just pay cash",          tag:'"I\'d rather own it outright."',    name:"Steve", role:"Craft brewery owner, Hamilton ON",      g:"m", sys:"You are Steve, owner of a craft brewery in Hamilton. You have the cash to buy a 40 thousand dollar canning line outright and you believe in owning your equipment. Debt makes you uncomfortable. Zach is trying to convince you to lease instead — push back."},
+    {id:"euthink",  label:"Need to think about it",     tag:'"Let me talk to my accountant."',   name:"Janet", role:"Vet clinic owner, Guelph ON",           g:"f", sys:"You are Janet, owner of a veterinary clinic in Guelph. Zach just laid out financing for a 52 thousand dollar X-ray system. It sounds reasonable but you always run big financial decisions through your accountant first. Use the accountant stall naturally — you are not opposed, just cautious."},
+    {id:"eucredit", label:"Worried about approval",     tag:'"I don\'t think I\'ll get approved."', name:"Ray", role:"Tree service owner, Barrie ON",         g:"m", sys:"You are Ray, an owner-operator running a tree service in Barrie. You had a rough 2022 with some late payments and a tax issue. You want to finance a 22 thousand dollar chipper but you are embarrassed to apply because you think you will be declined. Zach needs to gently draw this fear out of you."}
+  ]
+};
+
+var SYS = "You run a voice sales roleplay for Zach Taylor, equipment finance broker at Jocova Financial in Toronto. Lease-to-own financing 10K to 74999 dollars, 24 to 60 month terms, Ontario-wide. Multiple lenders, fast approvals, B-credit capable. Key angles: monthly payment framing not rate, tax deductibility, cash flow preservation.\n\nPlay the prospect. Keep replies SHORT — maximum 2 sentences. This is a phone call. Real energy — busy, skeptical.\n\nTrack rapport score 0 to 100 starting at 55.\nIncreases 10 to 25 for: payment reframe, consequence question, sector knowledge, tax angle, discovery before pitch, empathy without caving.\nDecreases 10 to 30 for: defending rate directly, feature dumping, ignoring objection before pivoting, jargon, sounding scripted.\n75 plus = engaged. 50 to 74 = neutral. 25 to 49 = checking out. 0 to 24 = call ends.\n\nReturn ONLY valid JSON with no markdown:\n{\"prospect_says\":\"max 2 sentences\",\"call_status\":\"active\",\"rapport_score\":55,\"coach_note\":\"2 sentences what Zach did and the NEPQ principle\",\"nepq_tag\":\"short label\"}\n\nWhen ended: hang up briefly. coach_note = debrief of what killed it and the exact pivot Zach should have made.";
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+var cur=null, hist=[], rap=55, cst='active', turns=0, log=[];
+var recog=null, isRec=false, pend='';
+
+// ── BUILD SCENARIO BUTTONS ─────────────────────────────────────────────────
+function mkList(group, containerId) {
+  var c = document.getElementById(containerId);
+  group.forEach(function(s) {
+    var b = document.createElement('button');
+    b.className = 'scen-btn';
+    b.innerHTML = '<div style="flex:1"><span class="scen-title">' + s.label + '</span><span class="scen-tag">' + s.tag + '</span><span class="scen-role">' + s.name + ' · ' + s.role + '</span></div><span style="color:#333;font-size:18px;margin-left:auto;">›</span>';
+    b.addEventListener('click', function() { begin(s); });
+    c.appendChild(b);
+  });
+}
+
+// ── SPEECH RECOGNITION ─────────────────────────────────────────────────────
+function initRec() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    document.getElementById('mstatus').textContent = 'Speech recognition not supported. Please use Chrome or Edge.';
+    return false;
+  }
+  recog = new SR();
+  recog.continuous = false;
+  recog.interimResults = true;
+  recog.lang = 'en-CA';
+
+  recog.onstart = function() {
+    isRec = true;
+    var b = document.getElementById('micbtn');
+    b.textContent = 'Listening... tap to finish';
+    b.classList.add('listening');
+    document.getElementById('mstatus').textContent = 'Speak now — tap when done';
+  };
+
+  recog.onresult = function(e) {
+    var fin = '', intr = '';
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) fin += e.results[i][0].transcript;
+      else intr += e.results[i][0].transcript;
+    }
+    if (fin) pend += ' ' + fin;
+    document.getElementById('interim').textContent = (pend + ' ' + intr).trim();
+  };
+
+  recog.onend = function() {
+    isRec = false;
+    var b = document.getElementById('micbtn');
+    b.textContent = 'Tap to speak';
+    b.classList.remove('listening');
+    document.getElementById('mstatus').textContent = '';
+    var t = pend.trim();
+    if (t) {
+      pend = '';
+      document.getElementById('interim').textContent = '';
+      doZach(t);
+    }
+  };
+
+  recog.onerror = function(e) {
+    isRec = false;
+    var b = document.getElementById('micbtn');
+    b.textContent = 'Tap to speak';
+    b.classList.remove('listening');
+    if (e.error !== 'no-speech') {
+      document.getElementById('mstatus').textContent = 'Mic error: ' + e.error + '. Check that Chrome has microphone permission for this file.';
+    }
+  };
+  return true;
+}
+
+function toggleMic() {
+  if (cst === 'ended') return;
+  if (isRec) {
+    recog.stop();
+  } else {
+    pend = '';
+    document.getElementById('interim').textContent = '';
+    try { recog.start(); } catch(e) { console.error('recog start error:', e); }
+  }
+}
+
+// ── START CALL ─────────────────────────────────────────────────────────────
+function begin(s) {
+  cur = s; hist = []; rap = 55; cst = 'active'; turns = 0; log = [];
+  document.getElementById('cn').textContent = s.name;
+  document.getElementById('cr').textContent = '· ' + s.role;
+  document.getElementById('msgs').innerHTML = '';
+  document.getElementById('ct').textContent = '';
+  document.getElementById('interim').textContent = '';
+  setBar(55);
+  go('call');
+
+  var ok = initRec();
+  if (ok) {
+    document.getElementById('micbtn').disabled = false;
+    document.getElementById('mstatus').textContent = 'Getting ' + s.name + ' ready...';
+  }
+
+  var om = { role: 'user', content: 'START CALL. ' + s.sys + '\n\nOpen as the prospect with your first objection line. Keep it to 1-2 sentences. Return JSON only.' };
+  showTyping(true);
+
+  callAPI([om]).then(function(res) {
+    hist = [om, { role: 'assistant', content: res.r }];
+    rap = res.p.rapport_score || 55;
+    cst = res.p.call_status || 'active';
+    setBar(rap);
+    addMsg('p', res.p.prospect_says);
+    log.push({ w: 'p', text: res.p.prospect_says, score: rap });
+    return sayIt(res.p.prospect_says, s.g);
+  }).then(function() {
+    showTyping(false);
+    document.getElementById('mstatus').textContent = 'Your turn — tap to speak';
+  }).catch(function(e) {
+    showTyping(false);
+    console.error(e);
+    document.getElementById('mstatus').textContent = 'Error connecting. Check your internet connection.';
+  });
+}
+
+// ── HANDLE ZACH SPEAKING ───────────────────────────────────────────────────
+function doZach(txt) {
+  if (cst === 'ended') return;
+  turns++;
+  document.getElementById('ct').textContent = turns + ' turn' + (turns !== 1 ? 's' : '');
+  addMsg('z', txt);
+  var entry = { w: 'z', text: txt, tag: '', note: '', sa: 55 };
+  log.push(entry);
+
+  var nh = hist.concat([{ role: 'user', content: txt }]);
+  showTyping(true);
+  document.getElementById('micbtn').disabled = true;
+  document.getElementById('mstatus').textContent = '';
+
+  callAPI(nh).then(function(res) {
+    hist = nh.concat([{ role: 'assistant', content: res.r }]);
+    rap = res.p.rapport_score || rap;
+    cst = res.p.call_status || 'active';
+    setBar(rap);
+    entry.tag = res.p.nepq_tag || '';
+    entry.note = res.p.coach_note || '';
+    entry.sa = res.p.rapport_score || rap;
+    addMsg('c', res.p.coach_note, res.p.nepq_tag);
+    addMsg('p', res.p.prospect_says);
+    log.push({ w: 'p', text: res.p.prospect_says, score: rap });
+    return sayIt(res.p.prospect_says, cur.g);
+  }).then(function() {
+    showTyping(false);
+    if (cst === 'ended') {
+      setTimeout(buildDebrief, 1500);
+    } else {
+      document.getElementById('micbtn').disabled = false;
+      document.getElementById('mstatus').textContent = 'Your turn — tap to speak';
+    }
+  }).catch(function(e) {
+    showTyping(false);
+    document.getElementById('micbtn').disabled = false;
+    console.error(e);
+  });
+}
+
+// ── API CALL ───────────────────────────────────────────────────────────────
+function callAPI(msgs) {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 400, system: SYS, messages: msgs })
+  }).then(function(res) { return res.json(); }).then(function(d) {
+    var raw = d.content.map(function(b) { return b.text || ''; }).join('');
+    var cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    return { p: JSON.parse(cleaned), r: raw };
+  });
+}
+
+// ── TEXT TO SPEECH ─────────────────────────────────────────────────────────
+function sayIt(text, gender) {
+  return new Promise(function(resolve) {
+    if (!window.speechSynthesis) { resolve(); return; }
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-CA';
+    u.rate = 0.92;
+    u.pitch = gender === 'f' ? 1.15 : 0.88;
+    var vs = window.speechSynthesis.getVoices();
+    var pick = vs.find(function(v) {
+      return v.lang.startsWith('en') && (gender === 'f'
+        ? /samantha|karen|victoria|moira|zoe|female/i.test(v.name)
+        : /daniel|alex|male|james|fred/i.test(v.name));
+    });
+    if (pick) u.voice = pick;
+    u.onend = resolve;
+    u.onerror = resolve;
+    window.speechSynthesis.speak(u);
+  });
+}
+
+// ── UI HELPERS ─────────────────────────────────────────────────────────────
+function addMsg(who, text, tag) {
+  var m = document.getElementById('msgs');
+  var w = document.createElement('div');
+  if (who === 'p') {
+    w.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="av" style="background:#1e1e1e;border:1px solid #2a2a2a;color:#777;">' + cur.name[0] + '</div><div class="bub-p">' + text + '</div></div>';
+  } else if (who === 'z') {
+    w.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-start;justify-content:flex-end;"><div class="bub-z">' + text + '</div><div class="av" style="background:linear-gradient(135deg,#c9952a,#e8b84b);color:#0f0f0f;">Z</div></div>';
+  } else {
+    w.innerHTML = '<div class="coach-box"><div class="coach-tag">' + (tag || 'Coaching') + '</div><div class="coach-text">' + text + '</div></div>';
+  }
+  m.appendChild(w);
+  w.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function setBar(s) {
+  var b = document.getElementById('bar');
+  var l = document.getElementById('barlabel');
+  b.style.width = s + '%';
+  if (s > 74) { b.style.background = '#7bc47f'; l.style.color = '#7bc47f'; l.textContent = 'Engaged · ' + s; }
+  else if (s > 49) { b.style.background = '#e8a838'; l.style.color = '#e8a838'; l.textContent = 'Neutral · ' + s; }
+  else { b.style.background = '#e83838'; l.style.color = '#e83838'; l.textContent = (s > 24 ? 'Losing it' : 'Dead') + ' · ' + s; }
+}
+
+function showTyping(v) { document.getElementById('typing').style.display = v ? 'block' : 'none'; }
+
+function go(n) {
+  ['pick', 'call', 'debrief'].forEach(function(s) {
+    document.getElementById('s-' + s).style.display = s === n ? 'block' : 'none';
+  });
+}
+
+function endCall() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (recog && isRec) recog.stop();
+  buildDebrief();
+}
+
+// ── DEBRIEF ────────────────────────────────────────────────────────────────
+function buildDebrief() {
+  go('debrief');
+  var zl = log.filter(function(l) { return l.w === 'z'; });
+  var avg = zl.length ? Math.round(zl.reduce(function(a, b) { return a + (b.sa || 55); }, 0) / zl.length) : 55;
+  var g = avg > 80 ? 'A' : avg > 65 ? 'B' : avg > 50 ? 'C' : avg > 35 ? 'D' : 'F';
+  var gc = avg > 65 ? '#7bc47f' : avg > 45 ? '#e8a838' : '#e83838';
+  document.getElementById('grade').textContent = g;
+  document.getElementById('grade').style.color = gc;
+  document.getElementById('dm').textContent = cur.name + ' · ' + cur.role + ' · ' + turns + ' exchange' + (turns !== 1 ? 's' : '') + ' · Final rapport: ' + rap;
+  var lc = zl.slice().reverse().find(function(l) { return l.note; });
+  document.getElementById('dsummary').textContent = lc ? lc.note : 'No exchanges recorded.';
+
+  var el = document.getElementById('exlist');
+  el.innerHTML = '';
+  zl.forEach(function(l, i) {
+    var sc = l.sa || 55;
+    var sc2 = sc > 74 ? '#7bc47f' : sc > 49 ? '#e8a838' : '#e83838';
+    var d = document.createElement('div');
+    d.className = 'exchange-card';
+    d.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">' +
+      '<span style="font-size:10px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.06em;">Exchange ' + (i+1) + '</span>' +
+      (l.tag ? '<span style="font-size:10px;background:#0d1a12;color:#7bc47f;border:1px solid #193322;padding:2px 8px;border-radius:4px;">' + l.tag + '</span>' : '') +
+      '<span style="font-size:12px;font-weight:600;margin-left:auto;color:' + sc2 + ';">Score: ' + sc + '</span>' +
+      '</div>' +
+      '<div style="font-size:13px;color:#ccc;line-height:1.55;margin-bottom:' + (l.note ? '8px' : '0') + ';">"' + l.text + '"</div>' +
+      (l.note ? '<div style="font-size:12px;color:#7a9e7d;line-height:1.6;border-top:1px solid #1e1e1e;padding-top:8px;">' + l.note + '</div>' : '');
+    el.appendChild(d);
+  });
+
+  var tx = '';
+  log.forEach(function(l) {
+    if (l.w !== 'c') tx += (l.w === 'z' ? 'Zach' : cur.name) + ': ' + l.text + '\n\n';
+  });
+  document.getElementById('fulltx').textContent = tx.trim();
+  document.getElementById('retrybtn').onclick = function() { begin(cur); };
+}
+
+function copyReport() {
+  var zl = log.filter(function(l) { return l.w === 'z'; });
+  var o = 'CALL DEBRIEF — ' + cur.name + ' (' + cur.role + ')\nTurns: ' + turns + ' · Final rapport: ' + rap + '\n\nEXCHANGES:\n';
+  zl.forEach(function(l, i) {
+    o += '\nExchange ' + (i+1) + ': "' + l.text + '"\nTag: ' + (l.tag||'—') + ' · Score after: ' + (l.sa||'—') + '\nCoaching: ' + (l.note||'—') + '\n';
+  });
+  o += '\nFULL TRANSCRIPT:\n';
+  log.forEach(function(l) {
+    if (l.w !== 'c') o += (l.w === 'z' ? 'Zach' : cur.name) + ': ' + l.text + '\n';
+  });
+  navigator.clipboard.writeText(o);
+  document.getElementById('copybtn').textContent = 'Copied!';
+  setTimeout(function() { document.getElementById('copybtn').textContent = 'Copy report'; }, 2000);
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+mkList(SC.p, 'g-p');
+mkList(SC.v, 'g-v');
+mkList(SC.e, 'g-e');
+if (window.speechSynthesis) window.speechSynthesis.getVoices();
+
+</script>
+</body>
+</html>
